@@ -180,6 +180,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "openai" },
+    { name = "patchpy" },
     { name = "prompt-toolkit" },
     { name = "rich" },
 ]
@@ -192,6 +193,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "openai", specifier = ">=2.6.1" },
+    { name = "patchpy", specifier = ">=2.0.4" },
     { name = "prompt-toolkit", specifier = ">=3.0.52" },
     { name = "rich", specifier = ">=14.2.0" },
 ]
@@ -221,6 +223,15 @@ wheels = [
 ]
 
 [[package]]
+name = "more-itertools"
+version = "10.8.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ea/5d/38b681d3fce7a266dd9ab73c66959406d565b3e85f21d5e66e1181d93721/more_itertools-10.8.0.tar.gz", hash = "sha256:f638ddf8a1a0d134181275fb5d58b086ead7c6a72429ad725c67503f13ba30bd", size = 137431 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a4/8e/469e5a4a2f5855992e425f3cb33804cc07bf18d48f2db061aec61ce50270/more_itertools-10.8.0-py3-none-any.whl", hash = "sha256:52d4362373dcf7c52546bc4af9a86ee7c4579df9a8dc268be0a2f949d376cc9b", size = 69667 },
+]
+
+[[package]]
 name = "nodeenv"
 version = "1.9.1"
 source = { registry = "https://pypi.org/simple" }
@@ -246,6 +257,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c4/44/303deb97be7c1c9b53118b52825cbd1557aeeff510f3a52566b1fa66f6a2/openai-2.6.1.tar.gz", hash = "sha256:27ae704d190615fca0c0fc2b796a38f8b5879645a3a52c9c453b23f97141bb49", size = 593043 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/15/0e/331df43df633e6105ff9cf45e0ce57762bd126a45ac16b25a43f6738d8a2/openai-2.6.1-py3-none-any.whl", hash = "sha256:904e4b5254a8416746a2f05649594fa41b19d799843cd134dac86167e094edef", size = 1005551 },
+]
+
+[[package]]
+name = "patchpy"
+version = "2.0.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "more-itertools" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d3/e3/cdac841ab3268b3fec521c40111e9299d5bfd234ff76bcb99a5098ee190e/patchpy-2.0.4.tar.gz", hash = "sha256:abe93dbd8cf972b0ac063239407ed7cf7415a67b73ac85de3b8e7a772af37f82", size = 8100 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fa/33/9233df81238d7162dbbbe7efad6cf29c1d23da8dd40214b38ce8a5108b30/patchpy-2.0.4-py3-none-any.whl", hash = "sha256:5c03b5ee89385f598c0c1c5e262b47f57f48d48bfda51f827f4e8e3ebdbc57b3", size = 6914 },
 ]
 
 [[package]]

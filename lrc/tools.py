@@ -40,7 +40,7 @@ class PromptPatchTool:
             "function": {
                 "name": self.name,
                 "description": (
-                    "Apply a unified diff patch to the chatbot's system prompt file."
+                    "Apply a unified diff patch to the system prompt."
                     " The diff must be generated against the current prompt contents."
                 ),
                 "parameters": {
@@ -64,7 +64,9 @@ class PromptPatchTool:
             )
         current_prompt = context.prompt_store.read()
         try:
-            updated_prompt = apply_unified_diff(current_prompt, diff_value)
+            updated_prompt = apply_unified_diff(
+                current_prompt, diff_value, filename=context.prompt_store.path.name
+            )
         except DiffApplyError as exc:
             return ToolResult(content=f"Error applying diff: {exc}")
         context.prompt_store.write(updated_prompt)

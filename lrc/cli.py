@@ -94,7 +94,7 @@ def create_prompt_session(history_path: Path) -> PromptSession[str]:
     history_path.parent.mkdir(parents=True, exist_ok=True)
     history = FileHistory(str(history_path))
     style = Style.from_dict({
-        "bottom-toolbar": "ansibright_black",
+        "bottom-toolbar": "gray",
     })
     session = PromptSession[str](
         style=style,
