@@ -67,7 +67,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--system-prompt",
         dest="system_prompt",
-        default="system_prompt.txt",
+        default="system_prompt.json",
         help="Path to the system prompt file to load and update",
     )
     parser.add_argument(

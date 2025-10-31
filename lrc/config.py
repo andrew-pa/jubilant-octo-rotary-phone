@@ -16,7 +16,3 @@ class ClientConfig:
     api_key: Optional[str]
     organization: Optional[str]
     system_prompt_path: Path
-
-    @staticmethod
-    def default_system_prompt_path() -> Path:
-        return Path.cwd() / "system_prompt.txt"
