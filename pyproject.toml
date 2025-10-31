@@ -8,7 +8,6 @@ dependencies = [
     "openai>=2.6.1",
     "prompt-toolkit>=3.0.52",
     "rich>=14.2.0",
-    "patchpy>=2.0.4",
 ]
 
 [dependency-groups]

@@ -18,7 +18,13 @@ from rich.panel import Panel
 from .chat_session import ChatSession
 from .config import ClientConfig
 from .prompt_store import SystemPromptStore
-from .tools import PromptPatchTool, ToolRegistry
+from .tools import (
+    PromptAppendTool,
+    PromptDeleteTool,
+    PromptReadTool,
+    PromptReplaceTool,
+    ToolRegistry,
+)
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -136,9 +142,44 @@ def run_chat_loop(
         stripped = user_input.strip()
         if not stripped:
             continue
-        if stripped in {":exit", ":quit", ":q"}:
-            console.print("Exiting chat.", style="bold yellow")
-            return
+        if stripped.startswith(":"):
+            command = stripped[1:].strip().lower()
+            if command in {"exit", "quit", "q"}:
+                console.print("Exiting chat.", style="bold yellow")
+                return
+            if command == "reset":
+                session.reset()
+                console.print(
+                    "Chat history cleared. Current system prompt retained.",
+                    style="bold yellow",
+                )
+                continue
+            if command in {"usage", "tokens"}:
+                summary = session.usage_summary()
+                last_prompt = summary["last_prompt_tokens"] or 0
+                last_completion = summary["last_completion_tokens"] or 0
+                last_total = summary["last_total_tokens"] or 0
+                lines = [
+                    f"Cumulative prompt tokens: {summary['total_prompt_tokens']}",
+                    f"Cumulative completion tokens: {summary['total_completion_tokens']}",
+                    f"Cumulative total tokens: {summary['total_tokens']}",
+                    f"Current context tokens (latest prompt): {last_prompt}",
+                    f"Current completion tokens (latest reply): {last_completion}",
+                    f"Current total tokens (latest call): {last_total}",
+                ]
+                console.print(
+                    Panel.fit(
+                        "\n".join(lines),
+                        title="Token Usage",
+                        border_style="green",
+                    )
+                )
+                continue
+            console.print(
+                f"Unknown command '{stripped}'. Available commands: :exit, :reset, :usage",
+                style="bold red",
+            )
+            continue
         console.rule("You", style="cyan")
         console.print(user_input)
         try:
@@ -173,7 +214,14 @@ def main(argv: Optional[list[str]] = None) -> int:
         system_prompt_path=prompt_path,
     )
     client = create_client(config)
-    tool_registry = ToolRegistry([PromptPatchTool()])
+    tool_registry = ToolRegistry(
+        [
+            PromptReadTool(),
+            PromptReplaceTool(),
+            PromptAppendTool(),
+            PromptDeleteTool(),
+        ]
+    )
     chat_session = ChatSession(
         client=client,
         config=config,

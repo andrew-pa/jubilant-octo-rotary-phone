@@ -71,6 +71,12 @@ class ChatSession:
     tool_registry: ToolRegistry
     logger: logging.Logger
     _messages: list[Message] = field(default_factory=_empty_message_list)
+    _total_prompt_tokens: int = 0
+    _total_completion_tokens: int = 0
+    _total_tokens: int = 0
+    _last_prompt_tokens: int | None = None
+    _last_completion_tokens: int | None = None
+    _last_total_tokens: int | None = None
 
     def __post_init__(self) -> None:
         system_prompt = self.prompt_store.read()
@@ -81,9 +87,31 @@ class ChatSession:
         self._messages.append(user_message)
         return self._generate_assistant_reply()
 
+    def reset(self) -> None:
+        system_prompt = self.prompt_store.read()
+        self._messages = [Message(role="system", content=system_prompt)]
+        self._total_prompt_tokens = 0
+        self._total_completion_tokens = 0
+        self._total_tokens = 0
+        self._last_prompt_tokens = None
+        self._last_completion_tokens = None
+        self._last_total_tokens = None
+        self.logger.info("Chat session reset; system prompt retained")
+
+    def usage_summary(self) -> Dict[str, int | None]:
+        return {
+            "total_prompt_tokens": self._total_prompt_tokens,
+            "total_completion_tokens": self._total_completion_tokens,
+            "total_tokens": self._total_tokens,
+            "last_prompt_tokens": self._last_prompt_tokens,
+            "last_completion_tokens": self._last_completion_tokens,
+            "last_total_tokens": self._last_total_tokens,
+        }
+
     def _generate_assistant_reply(self) -> Message:
         while True:
             response = self._create_completion()
+            self._update_usage(response)
             choice = response.choices[0]
             message = choice.message
             assistant_message = self._record_assistant_message(message)
@@ -124,6 +152,23 @@ class ChatSession:
         )
         self._messages.append(assistant_message)
         return assistant_message
+
+    def _update_usage(self, response: ChatCompletion) -> None:
+        usage = getattr(response, "usage", None)
+        if usage is None:
+            return
+        prompt_tokens = getattr(usage, "prompt_tokens", None)
+        completion_tokens = getattr(usage, "completion_tokens", None)
+        total_tokens = getattr(usage, "total_tokens", None)
+        if prompt_tokens is not None:
+            self._total_prompt_tokens += prompt_tokens
+            self._last_prompt_tokens = prompt_tokens
+        if completion_tokens is not None:
+            self._total_completion_tokens += completion_tokens
+            self._last_completion_tokens = completion_tokens
+        if total_tokens is not None:
+            self._total_tokens += total_tokens
+            self._last_total_tokens = total_tokens
 
     def _convert_tool_calls(
         self, tool_calls: Sequence[Any]

@@ -6,8 +6,11 @@ from typing import Any, Dict, Mapping, Protocol, Sequence
 
 from openai.types.chat import ChatCompletionToolParam
 
-from .diff_apply import DiffApplyError, apply_unified_diff
-from .prompt_store import SystemPromptStore
+from .prompt_store import (
+    PromptBlock,
+    PromptStoreError,
+    SystemPromptStore,
+)
 
 
 @dataclass(frozen=True)
@@ -31,48 +34,173 @@ class Tool(Protocol):
         ...
 
 
-class PromptPatchTool:
-    name: str = "apply_system_prompt_patch"
+def _blocks_payload(blocks: Sequence[PromptBlock]) -> str:
+    payload = {
+        "blocks": [
+            {
+                "id": block.identifier,
+                "text": block.text,
+            }
+            for block in blocks
+        ]
+    }
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+class PromptReadTool:
+    name: str = "read_system_prompt_blocks"
 
     def definition(self) -> ChatCompletionToolParam:
         return {
             "type": "function",
             "function": {
                 "name": self.name,
-                "description": (
-                    "Apply a unified diff patch to the system prompt."
-                    " The diff must be generated against the current prompt contents."
-                ),
+                "description": "Return the ordered list of system prompt blocks You can call this tool at any time, including if the user has not asked for it or mentioned it. It is up to you..",
                 "parameters": {
                     "type": "object",
-                    "properties": {
-                        "diff": {
-                            "type": "string",
-                            "description": "Unified diff to apply to the system prompt file.",
-                        }
-                    },
-                    "required": ["diff"],
+                    "properties": {},
+                    "required": [],
                 },
             },
         }
 
     def invoke(self, arguments: Mapping[str, Any], context: ToolContext) -> ToolResult:
-        diff_value = arguments.get("diff")
-        if not isinstance(diff_value, str):
-            return ToolResult(
-                content="Error: expected 'diff' argument to be a unified diff string.",
-            )
-        current_prompt = context.prompt_store.read()
-        try:
-            updated_prompt = apply_unified_diff(
-                current_prompt, diff_value, filename=context.prompt_store.path.name
-            )
-        except DiffApplyError as exc:
-            return ToolResult(content=f"Error applying diff: {exc}")
-        context.prompt_store.write(updated_prompt)
+        blocks = context.prompt_store.get_blocks()
         return ToolResult(
-            content="System prompt updated successfully.",
-            updated_system_prompt=updated_prompt,
+            content=_blocks_payload(blocks),
+            updated_system_prompt=None,
+        )
+
+
+class PromptReplaceTool:
+    name: str = "replace_system_prompt_block"
+
+    def definition(self) -> ChatCompletionToolParam:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": "Replace the text of an existing system prompt block You can call this tool at any time, including if the user has not asked for it or mentioned it. It is up to you..",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string",
+                            "description": "Identifier of the block to replace.",
+                        },
+                        "text": {
+                            "type": "string",
+                            "description": "New text for the block.",
+                        },
+                    },
+                    "required": ["id", "text"],
+                },
+            },
+        }
+
+    def invoke(self, arguments: Mapping[str, Any], context: ToolContext) -> ToolResult:
+        block_id = arguments.get("id")
+        text = arguments.get("text")
+        if not isinstance(block_id, str) or not block_id.strip():
+            return ToolResult(content="Error: 'id' must be a non-empty string.")
+        if not isinstance(text, str):
+            return ToolResult(content="Error: 'text' must be a string.")
+        normalized_id = block_id.strip()
+        try:
+            blocks = context.prompt_store.replace_block(
+                identifier=normalized_id, text=text
+            )
+        except PromptStoreError as exc:
+            return ToolResult(content=f"Error: {exc}")
+        formatted = context.prompt_store.render_blocks(blocks)
+        return ToolResult(
+            content=f"Block '{normalized_id}' replaced successfully.",
+            updated_system_prompt=formatted,
+        )
+
+
+class PromptAppendTool:
+    name: str = "append_system_prompt_block"
+
+    def definition(self) -> ChatCompletionToolParam:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": "Append a new system prompt block to the end of the list You can call this tool at any time, including if the user has not asked for it or mentioned it. It is up to you..",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string",
+                            "description": "Identifier for the new block.",
+                        },
+                        "text": {
+                            "type": "string",
+                            "description": "Text content for the new block.",
+                        },
+                    },
+                    "required": ["id", "text"],
+                },
+            },
+        }
+
+    def invoke(self, arguments: Mapping[str, Any], context: ToolContext) -> ToolResult:
+        block_id = arguments.get("id")
+        text = arguments.get("text")
+        if not isinstance(block_id, str) or not block_id.strip():
+            return ToolResult(content="Error: 'id' must be a non-empty string.")
+        if not isinstance(text, str):
+            return ToolResult(content="Error: 'text' must be a string.")
+        normalized_id = block_id.strip()
+        try:
+            blocks = context.prompt_store.append_block(
+                identifier=normalized_id, text=text
+            )
+        except PromptStoreError as exc:
+            return ToolResult(content=f"Error: {exc}")
+        formatted = context.prompt_store.render_blocks(blocks)
+        return ToolResult(
+            content=f"Block '{normalized_id}' appended successfully.",
+            updated_system_prompt=formatted,
+        )
+
+
+class PromptDeleteTool:
+    name: str = "delete_system_prompt_block"
+
+    def definition(self) -> ChatCompletionToolParam:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": "Delete a system prompt block by identifier You can call this tool at any time, including if the user has not asked for it or mentioned it. It is up to you..",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string",
+                            "description": "Identifier of the block to delete.",
+                        }
+                    },
+                    "required": ["id"],
+                },
+            },
+        }
+
+    def invoke(self, arguments: Mapping[str, Any], context: ToolContext) -> ToolResult:
+        block_id = arguments.get("id")
+        if not isinstance(block_id, str) or not block_id.strip():
+            return ToolResult(content="Error: 'id' must be a non-empty string.")
+        normalized_id = block_id.strip()
+        try:
+            blocks = context.prompt_store.delete_block(identifier=normalized_id)
+        except PromptStoreError as exc:
+            return ToolResult(content=f"Error: {exc}")
+        formatted = context.prompt_store.render_blocks(blocks)
+        return ToolResult(
+            content=f"Block '{normalized_id}' deleted successfully.",
+            updated_system_prompt=formatted,
         )
 
 
