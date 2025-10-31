@@ -1,5 +1,7 @@
 Inspired by this blog post: https://funcall.blogspot.com/2025/10/the-janusian-genesis-chronicle-of.html
+
 I borrowed their initial system prompt. (Thanks! This is a very cool idea!)
+Code was written almost entirely by ChatGPT 5 Codex.
 
 ## Usage
 - `uv install`
