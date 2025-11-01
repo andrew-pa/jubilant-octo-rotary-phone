@@ -17,6 +17,7 @@ from openai.types.chat.chat_completion_message_function_tool_call import (
 
 from .config import ClientConfig
 from .prompt_store import SystemPromptStore
+from .memory_store import MemoryStore
 from .tools import ToolContext, ToolInvocation, ToolRegistry, ToolResult
 
 META_PROMPT = """
@@ -73,6 +74,7 @@ class ChatSession:
     client: OpenAI
     config: ClientConfig
     prompt_store: SystemPromptStore
+    memory_store: MemoryStore
     tool_registry: ToolRegistry
     logger: logging.Logger
     _messages: list[Message] = field(default_factory=_empty_message_list)
@@ -197,7 +199,12 @@ class ChatSession:
         return tuple(result)
 
     def _handle_tool_calls(self, tool_calls: Sequence[Any]) -> None:
-        tool_context = ToolContext(prompt_store=self.prompt_store)
+        tool_context = ToolContext(
+            prompt_store=self.prompt_store,
+            memory_store=self.memory_store,
+            client=self.client,
+            embedding_model=self.config.embedding_model,
+        )
         for tool_call in tool_calls:
             if not isinstance(tool_call, ChatCompletionMessageFunctionToolCall):
                 self.logger.warning(

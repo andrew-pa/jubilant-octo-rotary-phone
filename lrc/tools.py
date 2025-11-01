@@ -4,6 +4,7 @@ import json
 from dataclasses import dataclass
 from typing import Any, Dict, Mapping, Protocol, Sequence
 
+from openai import OpenAI
 from openai.types.chat import ChatCompletionToolParam
 
 from .prompt_store import (
@@ -11,6 +12,14 @@ from .prompt_store import (
     PromptStoreError,
     SystemPromptStore,
 )
+from .memory_store import MemoryStore
+
+
+def _embed_text(client: OpenAI, model: str, text: str) -> Sequence[float]:
+    response = client.embeddings.create(model=model, input=[text])
+    if not response.data:
+        raise RuntimeError("Embedding response did not include any vectors.")
+    return response.data[0].embedding
 
 
 @dataclass(frozen=True)
@@ -22,6 +31,9 @@ class ToolResult:
 @dataclass
 class ToolContext:
     prompt_store: SystemPromptStore
+    memory_store: MemoryStore
+    client: OpenAI
+    embedding_model: str
 
 
 class Tool(Protocol):
@@ -202,6 +214,102 @@ class PromptDeleteTool:
             content=f"Block '{normalized_id}' deleted successfully.",
             updated_system_prompt=formatted,
         )
+
+
+class MemorizeTool:
+    name: str = "memorize"
+
+    def definition(self) -> ChatCompletionToolParam:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": (
+                    "Persist a text snippet into your private long-term memory store."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string",
+                            "description": "Plain text to store for later recall.",
+                        }
+                    },
+                    "required": ["text"],
+                },
+            },
+        }
+
+    def invoke(self, arguments: Mapping[str, Any], context: ToolContext) -> ToolResult:
+        text = arguments.get("text")
+        if not isinstance(text, str) or not text.strip():
+            return ToolResult(content="Error: 'text' must be a non-empty string.")
+        embedding = _embed_text(context.client, context.embedding_model, text)
+        record = context.memory_store.add(text=text, embedding=embedding)
+        payload = {
+            "status": "stored",
+            "id": record.identifier,
+            "text": record.text,
+        }
+        return ToolResult(content=json.dumps(payload, ensure_ascii=False, indent=2))
+
+
+class ReminisceTool:
+    name: str = "reminisce"
+
+    def definition(self) -> ChatCompletionToolParam:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": (
+                    "Retrieve the most relevant previously stored memories for a supplied query."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The text used to search the memory store.",
+                        },
+                        "limit": {
+                            "type": "integer",
+                            "description": (
+                                "Maximum number of memories to return (default: 3)."
+                            ),
+                            "minimum": 1,
+                        },
+                    },
+                    "required": ["query"],
+                },
+            },
+        }
+
+    def invoke(self, arguments: Mapping[str, Any], context: ToolContext) -> ToolResult:
+        query = arguments.get("query")
+        limit_argument = arguments.get("limit", 3)
+        if not isinstance(query, str) or not query.strip():
+            return ToolResult(content="Error: 'query' must be a non-empty string.")
+        if not isinstance(limit_argument, int):
+            return ToolResult(content="Error: 'limit' must be an integer if provided.")
+        limit = max(1, limit_argument)
+        if context.memory_store.is_empty():
+            payload = {"query": query, "results": []}
+            return ToolResult(content=json.dumps(payload, ensure_ascii=False, indent=2))
+        embedding = _embed_text(context.client, context.embedding_model, query)
+        matches = context.memory_store.find_similar(embedding=embedding, limit=limit)
+        payload = {
+            "query": query,
+            "results": [
+                {
+                    "id": record.identifier,
+                    "text": record.text,
+                    "score": score,
+                }
+                for record, score in matches
+            ],
+        }
+        return ToolResult(content=json.dumps(payload, ensure_ascii=False, indent=2))
 
 
 @dataclass

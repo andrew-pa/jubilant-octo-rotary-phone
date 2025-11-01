@@ -10,9 +10,11 @@ class ClientConfig:
     """Configuration for connecting to the OpenAI-compatible endpoint."""
 
     model: str
+    embedding_model: str
     temperature: float
     max_tokens: Optional[int]
     base_url: Optional[str]
     api_key: Optional[str]
     organization: Optional[str]
     system_prompt_path: Path
+    memory_store_path: Path

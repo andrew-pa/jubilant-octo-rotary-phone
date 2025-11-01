@@ -18,11 +18,14 @@ from rich.panel import Panel
 from .chat_session import ChatSession
 from .config import ClientConfig
 from .prompt_store import SystemPromptStore
+from .memory_store import MemoryStore
 from .tools import (
     PromptAppendTool,
     PromptDeleteTool,
     PromptReadTool,
     PromptReplaceTool,
+    MemorizeTool,
+    ReminisceTool,
     ToolRegistry,
 )
 
@@ -33,6 +36,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--model",
         default="gpt-4.1-mini",
         help="Model name to use for chat completions (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--embedding-model",
+        default="text-embedding-3-small",
+        help="Model name to use for generating embeddings (default: %(default)s)",
     )
     parser.add_argument(
         "--temperature",
@@ -69,6 +77,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
         dest="system_prompt",
         default="system_prompt.json",
         help="Path to the system prompt file to load and update",
+    )
+    parser.add_argument(
+        "--memory-store",
+        dest="memory_store",
+        default=None,
+        help=(
+            "Path to the persistent memory store file "
+            "(default: alongside the system prompt with suffix _memories.npz)"
+        ),
     )
     parser.add_argument(
         "--log-level",
@@ -204,14 +221,21 @@ def main(argv: Optional[list[str]] = None) -> int:
     prompt_path = Path(args.system_prompt).expanduser().resolve()
     prompt_store = SystemPromptStore(prompt_path)
     prompt_store.ensure_exists()
+    if args.memory_store is None:
+        memory_store_path = prompt_path.with_name(f"{prompt_path.stem}_memories.npz")
+    else:
+        memory_store_path = Path(args.memory_store).expanduser().resolve()
+    memory_store = MemoryStore(memory_store_path)
     config = ClientConfig(
         model=args.model,
+        embedding_model=args.embedding_model,
         temperature=args.temperature,
         max_tokens=args.max_tokens,
         base_url=args.api_base,
         api_key=args.api_key,
         organization=args.organization,
         system_prompt_path=prompt_path,
+        memory_store_path=memory_store_path,
     )
     client = create_client(config)
     tool_registry = ToolRegistry(
@@ -220,12 +244,15 @@ def main(argv: Optional[list[str]] = None) -> int:
             PromptReplaceTool(),
             PromptAppendTool(),
             PromptDeleteTool(),
+            MemorizeTool(),
+            ReminisceTool(),
         ]
     )
     chat_session = ChatSession(
         client=client,
         config=config,
         prompt_store=prompt_store,
+        memory_store=memory_store,
         tool_registry=tool_registry,
         logger=logging.getLogger("lrc"),
     )

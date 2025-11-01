@@ -80,7 +80,7 @@ class SystemPromptStore:
             return "Instruction Blocks: (none)\n"
         lines: List[str] = ["Instruction Blocks:"]
         for block in blocks:
-            header = f"{block.identifier}. "
+            header = f"{block.identifier}: "
             lines.append(header)
             content_lines = block.text.splitlines() or [""]
             for line in content_lines:
