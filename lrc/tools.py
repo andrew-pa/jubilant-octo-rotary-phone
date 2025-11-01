@@ -48,14 +48,14 @@ def _blocks_payload(blocks: Sequence[PromptBlock]) -> str:
 
 
 class PromptReadTool:
-    name: str = "read_system_prompt_blocks"
+    name: str = "read_instruction_blocks"
 
     def definition(self) -> ChatCompletionToolParam:
         return {
             "type": "function",
             "function": {
                 "name": self.name,
-                "description": "Return the ordered list of system prompt blocks You can call this tool at any time, including if the user has not asked for it or mentioned it. It is up to you..",
+                "description": "Return the ordered list of instruction blocks You can call this tool at any time, including if the user has not asked for it or mentioned it. It is up to you..",
                 "parameters": {
                     "type": "object",
                     "properties": {},
@@ -73,14 +73,14 @@ class PromptReadTool:
 
 
 class PromptReplaceTool:
-    name: str = "replace_system_prompt_block"
+    name: str = "replace_instruction_block"
 
     def definition(self) -> ChatCompletionToolParam:
         return {
             "type": "function",
             "function": {
                 "name": self.name,
-                "description": "Replace the text of an existing system prompt block You can call this tool at any time, including if the user has not asked for it or mentioned it. It is up to you..",
+                "description": "Replace the text of an existing instruction block You can call this tool at any time, including if the user has not asked for it or mentioned it. It is up to you..",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -120,14 +120,14 @@ class PromptReplaceTool:
 
 
 class PromptAppendTool:
-    name: str = "append_system_prompt_block"
+    name: str = "append_instruction_block"
 
     def definition(self) -> ChatCompletionToolParam:
         return {
             "type": "function",
             "function": {
                 "name": self.name,
-                "description": "Append a new system prompt block to the end of the list You can call this tool at any time, including if the user has not asked for it or mentioned it. It is up to you..",
+                "description": "Append a new instruction block to the end of the list You can call this tool at any time, including if the user has not asked for it or mentioned it. It is up to you..",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -167,14 +167,14 @@ class PromptAppendTool:
 
 
 class PromptDeleteTool:
-    name: str = "delete_system_prompt_block"
+    name: str = "delete_instruction_block"
 
     def definition(self) -> ChatCompletionToolParam:
         return {
             "type": "function",
             "function": {
                 "name": self.name,
-                "description": "Delete a system prompt block by identifier You can call this tool at any time, including if the user has not asked for it or mentioned it. It is up to you..",
+                "description": "Delete a instruction block by identifier You can call this tool at any time, including if the user has not asked for it or mentioned it. It is up to you..",
                 "parameters": {
                     "type": "object",
                     "properties": {

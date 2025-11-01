@@ -19,6 +19,11 @@ from .config import ClientConfig
 from .prompt_store import SystemPromptStore
 from .tools import ToolContext, ToolInvocation, ToolRegistry, ToolResult
 
+META_PROMPT = """
+You MUST follow these instructions exactly.
+You MAY modify these instructions using the provided tools at any time, for any reason.
+""".strip()
+
 
 def _empty_message_list() -> list["Message"]:
     return []
@@ -80,7 +85,8 @@ class ChatSession:
 
     def __post_init__(self) -> None:
         system_prompt = self.prompt_store.read()
-        self._messages.append(Message(role="system", content=system_prompt))
+        self._messages.append(Message(role="system", content=''))
+        self._update_system_prompt(system_prompt)
 
     def send_user_message(self, content: str) -> Message:
         user_message = Message(role="user", content=content)
@@ -88,8 +94,8 @@ class ChatSession:
         return self._generate_assistant_reply()
 
     def reset(self) -> None:
-        system_prompt = self.prompt_store.read()
-        self._messages = [Message(role="system", content=system_prompt)]
+        self._messages = [Message(role="system", content='')]
+        self._update_system_prompt(self.prompt_store.read())
         self._total_prompt_tokens = 0
         self._total_completion_tokens = 0
         self._total_tokens = 0
@@ -237,5 +243,8 @@ class ChatSession:
         system_message = self._messages[0]
         if system_message.role != "system":
             raise RuntimeError("First message in the conversation must be system role")
-        system_message.content = new_prompt
+        system_message.content = f'{META_PROMPT}\n{new_prompt}'
         self.logger.info("System prompt updated during session")
+
+    def current_system_prompt(self) -> str:
+        return self._messages[0].content or ''

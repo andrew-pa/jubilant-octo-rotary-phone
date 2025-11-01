@@ -77,8 +77,8 @@ class SystemPromptStore:
 
     def render_blocks(self, blocks: Sequence[PromptBlock]) -> str:
         if not blocks:
-            return "System Prompt Blocks: (empty)\n"
-        lines: List[str] = ["System Prompt Blocks (in order):"]
+            return "Instruction Blocks: (none)\n"
+        lines: List[str] = ["Instruction Blocks:"]
         for block in blocks:
             header = f"{block.identifier}. "
             lines.append(header)

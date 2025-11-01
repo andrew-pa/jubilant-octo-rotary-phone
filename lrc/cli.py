@@ -236,7 +236,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     )
     console.print(
         Panel.fit(
-            prompt_store.read().strip(),
+            chat_session.current_system_prompt(),
             title="System Prompt",
             border_style="blue",
         )
